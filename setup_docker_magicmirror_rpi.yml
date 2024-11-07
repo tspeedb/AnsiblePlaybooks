@@ -1,0 +1,68 @@
+---
+- name: Setup Docker and clone magicmirror repository on Raspberry Pi OS
+  hosts: all
+  become: true  # Run as root (or with sudo privileges)
+
+  vars:
+    docker_user: docker  # Replace with the desired Docker user
+
+  tasks:
+    - name: Update apt packages
+      apt:
+        update_cache: yes
+
+    - name: Install prerequisites for Docker
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Add Docker’s official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        state: present
+
+    - name: Set up Docker repository
+      apt_repository:
+        repo: "deb [arch=armhf] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+        state: present
+      when: ansible_architecture == "armv7l" or ansible_architecture == "armhf"
+
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        state: present
+        update_cache: yes
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install Git
+      apt:
+        name: git
+        state: present
+
+    - name: Create Docker user
+      user:
+        name: "{{ docker_user }}"
+        state: present
+        create_home: true
+
+    - name: Add Docker user to the docker group
+      user:
+        name: "{{ docker_user }}"
+        groups: docker
+        append: yes
+
+    - name: Clone magicmirror repository
+      git:
+        repo: https://gitlab.com/khassel/magicmirror.git
+        dest: /opt/magicmirror  # Modify this path if needed
+        update: yes
